@@ -1,5 +1,5 @@
 /* ==========================================================================
-   DAVID MOTT — pickleball coaching · Alabama
+   SAM CHADWELL — tennis coaching · San Antonio, Texas
    Page behaviour.
    Progressive enhancement: all content is readable with no JS and no motion.
    ========================================================================== */
@@ -26,12 +26,12 @@
      ever shown as a placeholder.
      ========================================================================== */
   const CONTACT = {
-    email: '',       // e.g. 'hello@…' — shown as a mailto link once David approves one
+    email: '',       // e.g. 'hello@…' — shown as a mailto link once Sam approves one
     instagram: '',   // full profile URL, once confirmed
     facebook: '',    // full profile URL, once confirmed
   };
   const PROOF = {
-    // Real player feedback only, shared with David's and the player's permission —
+    // Real player feedback only, shared with Sam's and the player's permission —
     // no invented names, quotes, ratings or results.
     testimonials: [], // e.g. { quote: '…', name: 'First name or initials', service: 'Private lessons' }
   };
@@ -127,8 +127,8 @@
   d.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(true); });
 
   /* ---------- In-page links ----------
-     data-pick → opens that option in the coaching-interest selector (private / group / skill / unsure)
-     data-type → carries an interest category into step 1 of the inquiry */
+     data-pick → opens that path in the coaching-path selector (start / develop / compete / family / adapt)
+     data-type → carries an inquiry category into step 2 of the inquiry */
   d.addEventListener('click', (e) => {
     const a = e.target.closest('a[href^="#"]');
     if (!a) return;
@@ -138,7 +138,7 @@
     e.preventDefault();
     closeMenu(false);
     if (a.dataset.pick) setPick(a.dataset.pick, true);
-    const toBook = id === '#book';
+    const toBook = id === '#ask';
     if (toBook) prepareBooking({ type: a.dataset.type });
     scrollToTarget(toBook ? form : target, toBook ? -110 : -20);
     if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
@@ -217,12 +217,54 @@
   if (motion) $$('.split').forEach(splitWords);
 
   /* ==========================================================================
-     HERO — the court draws in → the kicker → the headline rises line by line
-     → David's photo opens upward → lede, CTAs and the credibility line (its
-     numbers count up) → the dotted EXPERIENCE LINE draws along the shot path
-     and the ball travels it once, landing by the photo → the name card lands.
+     LOGO — the court line (C) draws, the ball travels the S trajectory once
+     and lands on the C's open end, SC resolves and rests. It repeats every
+     seven seconds a few times, then stays still for good (hover or focus on
+     the logo replays it). Only while the header is visible and the tab is
+     in view. Static for reduced motion / no GSAP.
+     ========================================================================== */
+  const logo = $('.logo');
+  const mark = $('.logo__mark', logo);
+  if (mark && motion) {
+    const mC = $('.mk-c', mark), mS = $('.mk-s', mark), mB = $('.mk-b', mark), route = $('.mk-route', mark);
+    const rLen = route.getTotalLength();
+    const rest = { x: 37, y: 13.1 };
+    const ballAt = (t) => { const p = route.getPointAtLength(t * rLen); G.set(mB, { attr: { cx: p.x, cy: p.y } }); };
+    let ltl = null, runs = 0, loop = 0;
+    const play = () => {
+      if (ltl && ltl.isActive()) return;
+      const o = { t: 0 };
+      ltl = G.timeline()
+        .set([mC, mS], { strokeDashoffset: 1 })
+        .set(mB, { attr: { cx: 17.6, cy: 31 }, scale: 0, transformOrigin: '50% 50%' })
+        .to(mC, { strokeDashoffset: 0, duration: 1, ease: 'power2.inOut' })
+        .to(mB, { scale: 1, duration: .25, ease: 'back.out(2)' }, '-=.2')
+        .to(mS, { strokeDashoffset: 0, duration: 1.1, ease: 'power1.inOut' }, '<')
+        .to(o, { t: 1, duration: 1.3, ease: 'power1.inOut', onUpdate: () => ballAt(o.t) }, '<')
+        .set(mB, { attr: { cx: rest.x, cy: rest.y } });
+    };
+    const schedule = () => {
+      clearTimeout(loop);
+      if (runs >= 4) return;            // a handful of times, then rest
+      loop = setTimeout(() => {
+        if (!d.hidden && !nav.classList.contains('is-hidden') && !menu.classList.contains('is-open')) { runs++; play(); }
+        schedule();
+      }, 7000);
+    };
+    runs = 1;
+    G.delayedCall(.4, play);
+    schedule();
+    logo.addEventListener('pointerenter', play);
+    logo.addEventListener('focus', play);
+  }
+
+  /* ==========================================================================
+     HERO — the tennis court draws in → the kicker → the headline rises line by
+     line → the image opens upward → lede, CTAs and the credibility line → the
+     dotted court line draws along the ball path and the ball travels it once,
+     landing by the image → the card lands and its 38 counts up from 00, once.
      CSS does the drawing; this sequences the classes and moves the ball.
-     Desktop: a gentle parallax on the photo while the hero scrolls away.
+     Desktop: a gentle parallax on the image while the hero scrolls away.
      ========================================================================== */
   const hx = $('.hx');
   const hxBall = $('.hx__ball', hx);
@@ -242,28 +284,31 @@
     const o = { t: 0 };
     G.to(o, { t: 1, duration: 1.5, ease: 'power1.inOut', onUpdate: () => placeHxBall(o.t) });
   };
+  // 00 → 38, once
   const countUp = () => $$('[data-count]', hx).forEach((el) => {
     const o = { n: 0 };
-    G.to(o, { n: +el.dataset.count, duration: 1.3, ease: 'power2.out', onUpdate: () => { el.textContent = Math.round(o.n); } });
+    el.textContent = '00';
+    G.to(o, { n: +el.dataset.count, duration: 1.6, ease: 'power2.out', onUpdate: () => { el.textContent = pad(Math.round(o.n)); } });
   });
   const HX_ALL = ['is-court', 'is-kick', 'is-title', 'is-img', 'is-shot', 'is-card'];
   if (motion) {
     const on = (cls) => () => hx.classList.add(cls);
     const show = (el) => () => el.classList.add('in');
     placeHxBall(0);
+    $$('[data-count]', hx).forEach((el) => { el.textContent = '00'; });
     G.timeline({ delay: 0.15 })
       .add(on('is-court'), 0)
       .add(on('is-kick'), 0.15)
       .add(on('is-title'), 0.3)
-      .add(on('is-img'), 0.5)
-      .add(show($('.hx__lede', hx)), 0.9)
-      .add(show($('.hx__ctas', hx)), 1.05)
-      .add(show($('.hx__creds', hx)), 1.2)
-      .add(countUp, 1.25)
+      .add(on('is-img'), 0.55)
+      .add(show($('.hx__lede', hx)), 0.95)
+      .add(show($('.hx__ctas', hx)), 1.1)
+      .add(show($('.hx__creds', hx)), 1.25)
       .add(on('is-shot'), 1.4)
       .add(runShot, 1.5)
-      .add(on('is-card'), 2.7);
-    // gentle parallax on the photo (desktop only; phones keep it still)
+      .add(on('is-card'), 2.6)
+      .add(countUp, 2.75);
+    // gentle parallax on the image (desktop only; phones keep it still)
     G.matchMedia().add('(min-width: 1024px)', () => {
       const scrub = { trigger: hx, start: 'top top', end: 'bottom top', scrub: true };
       G.fromTo($('.hx__img picture', hx), { yPercent: -3 }, { yPercent: 4, ease: 'none', scrollTrigger: scrub });
@@ -290,9 +335,9 @@
   }
 
   /* ==========================================================================
-     Experience marker — a split-flap board. When it comes into view each
-     tile shuffles through a few characters and lands on its value, column by
-     column. The final values are in the HTML, so it reads correctly without JS.
+     Coaching philosophy — the court-side flip board. When it comes into
+     view each tile shuffles through a few letters and lands on its word, row
+     by row. The words are in the HTML, so it reads correctly without JS.
      ========================================================================== */
   const FLAP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const runFlaps = () => {
@@ -312,7 +357,7 @@
   };
   if (motion && $('.sb')) ST.create({ trigger: '.sb', start: 'top 72%', once: true, onEnter: runFlaps });
 
-  /* Meet David — the card tilts toward the pointer, with a soft shine */
+  /* Meet Sam — the card tilts toward the pointer, with a soft shine */
   const ccard = $('.ccard');
   if (ccard && fine && motion) {
     G.set(ccard, { transformPerspective: 1000 });
@@ -330,8 +375,9 @@
   }
 
   /* ==========================================================================
-     HIS STORY — YMCA, Madison → Helping → Coaching → … → Today, across a court.
-     p runs 0 → 5 through the six milestones. renderJr(p) puts the ball on the
+     THE 38-YEAR STORY — Player → Competitor → Coach → Mentor → 38 years,
+     across a tennis court, baseline to baseline. p runs 0 → 4 through the
+     five milestones. renderJr(p) puts the ball on the
      rally arc between milestone floor(p) and the next (a higher arc over the
      net), fills the rail / court to the ball and makes the nearest milestone
      active (photo, copy, stamp). Desktop + motion: the stage pins and scroll
@@ -460,24 +506,24 @@
   d.fonts && d.fonts.ready.then(() => { measure(); renderJr(jrP); });
 
   /* ==========================================================================
-     COACHING INTEREST — four INTEREST CATEGORIES (not confirmed services):
-     Private lessons, Group / clinic, Skill development, Not sure. The
-     section's data-pick drives the CSS (court zone, markers, the ball's spot,
-     legend, accent); this swaps David's photo (wiping from the side you moved
-     toward), the copy and the CTA, and remembers the choice for step 1 of the
+     COACHING PATHS — five areas Sam can discuss with players (not confirmed
+     services): Start, Develop, Compete, Family, Adapt. The section's
+     data-pick drives the CSS (court zone, markers, the ball's spot, legend,
+     accent); this swaps the image (wiping from the side you moved toward),
+     the copy and the CTA, and remembers the choice for step 2 of the
      inquiry. A radio group: arrows move and select.
      ========================================================================== */
-  const PICKS = { private: 'Private lesson', group: 'Group / clinic', skill: 'Skill development', unsure: 'Not sure' };
+  const PICKS = { start: 'Beginner help', develop: 'Skill development', compete: 'Advanced training', family: 'Family / homeschool', adapt: 'Adaptive tennis' };
   const PICK_ORDER = Object.keys(PICKS);
   const ci = $('.ci');
   const ciOpts = $$('.ci__opt', ci);
   const ciCards = $$('.ci__card', ci);
   const ciImgs = $$('.ci__img', ci);
   const ciMedia = $('.ci__media', ci);
-  let chosenType = PICKS[mem.get('ci-pick')] || '';  // carried into the inquiry
+  let chosenType = PICKS[mem.get('sc-pick')] || '';  // carried into the inquiry
   function setPick(key, user) {
     if (!PICKS[key]) return;
-    if (user) { chosenType = PICKS[key]; mem.set('ci-pick', key); carryType(); }
+    if (user) { chosenType = PICKS[key]; mem.set('sc-pick', key); carryType(); }
     if (ci.dataset.pick === key) return;
     const back = PICK_ORDER.indexOf(key) < PICK_ORDER.indexOf(ci.dataset.pick);
     ci.dataset.pick = key;
@@ -504,21 +550,100 @@
     });
   });
   ciCards.forEach((c) => { c.inert = !c.classList.contains('is-on'); });
-  if (mem.get('ci-pick')) setPick(mem.get('ci-pick'), false);
+  if (mem.get('sc-pick')) setPick(mem.get('sc-pick'), false);
 
   /* ==========================================================================
-     CONTACT · INQUIRY — an inquiry, not a booking.
-     1 I'm interested in → 2 my current experience (both inquiry categories
-     only, until David confirms his services) → 3 contact, then a
-     confirmation. The counter and bar — the experience line as a progress
-     indicator — follow the current step. Beside the form, the note David
-     will receive writes itself from the answers (each line jumps back to its
-     step once reached) and the checklist ticks off the three things he needs.
-     A coaching interest chosen earlier on the page is pre-filled in step 1.
+     INCLUSIVE TENNIS — one game, many ways to learn it. ARIA tabs (arrows,
+     Home / End). Each concept reshapes the same court line: the path's shape
+     and the ends tween (GSAP interpolates the numbers inside the d string),
+     and the CSS fades in that concept's overlay. When the section first
+     comes into view the line starts as a standard baseline, then adapts.
+     ========================================================================== */
+  const ia = $('.ia');
+  if (ia) {
+    const tabs = $$('.ia__tab', ia);
+    const panelsIa = $$('.ia__panel', ia);
+    const fig = $('.ia__fig', ia);
+    const iaLine = $('.ia__line', fig);
+    const ends = $$('.ia__end', fig);
+    const iaBall = $('.ia__ball', fig);
+    const capB = $('.ia__cap-b b', fig);
+    // [line d, end A, end B, ball]
+    const SHAPES = {
+      standard:      ['M60 260 C 230 260, 410 260, 580 260', [60, 260], [580, 260], [420, 180]],
+      vision:        ['M60 260 C 230 260, 410 260, 580 260', [60, 260], [580, 260], [420, 180]],
+      mobility:      ['M60 260 C 230 260, 410 260, 580 260', [60, 260], [580, 260], [520, 230]],
+      communication: ['M46 260 C 230 260, 410 260, 594 260', [46, 260], [594, 260], [510, 150]],
+      confidence:    ['M200 236 C 280 236, 340 236, 440 236', [200, 236], [440, 236], [440, 236]],
+      adaptation:    ['M60 260 C 200 90, 430 360, 580 200', [60, 260], [580, 200], [580, 200]],
+    };
+    const NAMES = { vision: 'Vision', mobility: 'Mobility', communication: 'Communication', confidence: 'Confidence', adaptation: 'Adaptation' };
+    const shape = (state, animate) => {
+      const [dd, A, B, ball] = SHAPES[state];
+      fig.dataset.state = state;
+      if (capB && NAMES[state]) capB.textContent = NAMES[state];
+      if (animate && motion) {
+        G.to(iaLine, { attr: { d: dd }, duration: .9, ease: 'power3.inOut', overwrite: 'auto' });
+        G.to(ends[0], { attr: { cx: A[0], cy: A[1] }, duration: .9, ease: 'power3.inOut', overwrite: 'auto' });
+        G.to(ends[1], { attr: { cx: B[0], cy: B[1] }, duration: .9, ease: 'power3.inOut', overwrite: 'auto' });
+        G.to(iaBall, { attr: { cx: ball[0], cy: ball[1] }, duration: .9, ease: 'power2.inOut', overwrite: 'auto' });
+      } else {
+        iaLine.setAttribute('d', dd);
+        ends[0].setAttribute('cx', A[0]); ends[0].setAttribute('cy', A[1]);
+        ends[1].setAttribute('cx', B[0]); ends[1].setAttribute('cy', B[1]);
+        iaBall.setAttribute('cx', ball[0]); iaBall.setAttribute('cy', ball[1]);
+      }
+    };
+    let iaCur = 'vision';
+    const select = (tab, focus) => {
+      tabs.forEach((t) => {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+      });
+      panelsIa.forEach((p) => { p.hidden = p.id !== tab.getAttribute('aria-controls'); });
+      if (focus) tab.focus();
+      iaCur = tab.dataset.state;
+      shape(iaCur, true);
+    };
+    panelsIa.forEach((p, i) => { p.hidden = i !== 0; });
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => select(t));
+      t.addEventListener('keydown', (e) => {
+        const to = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+        if (to === undefined) return;
+        e.preventDefault();
+        select(tabs[(to + tabs.length) % tabs.length], true);
+      });
+    });
+    if (motion) {
+      // a standard baseline first, then it adapts to the selected idea
+      shape('standard', false);
+      G.set(iaLine, { strokeDasharray: 700, strokeDashoffset: 700 });
+      ST.create({
+        trigger: fig, start: 'top 75%', once: true,
+        onEnter: () => {
+          G.to(iaLine, { strokeDashoffset: 0, duration: 1.2, ease: 'power2.inOut', onComplete: () => { G.set(iaLine, { clearProps: 'strokeDasharray,strokeDashoffset' }); shape(iaCur, true); } });
+        },
+      });
+    } else {
+      shape(iaCur, false);
+    }
+  }
+
+  /* ==========================================================================
+     LESSON INQUIRY — an inquiry, not a booking.
+     1 who the lesson is for → 2 what you're looking for (both inquiry
+     categories only, until Sam confirms his services) → 3 contact, then a
+     confirmation. The counter and bar — the court line as a progress
+     indicator — follow the current step. Beside the form, the note Sam will
+     receive writes itself from the answers (each line jumps back to its step
+     once reached) and the checklist ticks off the three things he needs.
+     A coaching path chosen earlier on the page is pre-filled in step 2.
      Posts to Netlify Forms. Without JS every step shows and the form posts
      normally.
      ========================================================================== */
-  const form = $('#bookForm');
+  const form = $('#askForm');
   const steps = $$('.rq__step', form);
   const done = $('.rq__done', form);
   const live = $('#rqLive');
@@ -536,7 +661,7 @@
   const phone = $('#rq-phone');
   const N = steps.length;
   const TITLES = steps.map((s) => $('.rq__h', s).lastChild.textContent.trim());
-  const SHORT = ['Interest', 'Experience', 'Contact details'];
+  const SHORT = ['Who it\'s for', 'Looking for', 'Contact details'];
   let cur = 1, reached = 1, sent = false;
 
   const setProgress = (n) => {               // n: 1–N, or N + 1 once sent
@@ -545,7 +670,7 @@
       li.classList.toggle('is-done', n > N || k < n || (k <= reached && k !== n && validStep(k)));
       li.classList.toggle('is-now', k === n && n <= N);
     });
-    const label = n > N ? 'Sent to David' : SHORT[n - 1];
+    const label = n > N ? 'Sent to Sam' : SHORT[n - 1];
     const num = pad(Math.min(n, N));
     if (curNum.textContent !== num) { curNum.textContent = num; if (motion) restartClass(curNum, 'is-flip'); }
     nowLabel.textContent = label;
@@ -635,23 +760,24 @@
   });
   // tapping a card in steps 1–2 moves straight on (a short pause shows the selection);
   // keyboard users arrowing through the options (click events with detail 0) stay put
-  $$('input[name="interest"], input[name="experience"]', form).forEach((r) => r.addEventListener('click', (e) => {
-    if (r.name === 'interest') carry.hidden = true;
+  let focusByUser = false;   // once the visitor picks step 2 themselves, a path chosen above no longer replaces it
+  $$('input[name="lesson_for"], input[name="looking_for"]', form).forEach((r) => r.addEventListener('click', (e) => {
+    if (r.name === 'looking_for') { carry.hidden = true; focusByUser = true; }
     const n = +r.closest('.rq__step').dataset.step;
     if (cur === n && e.detail > 0) setTimeout(() => { if (cur === n && r.checked) goStep(n + 1, true); }, motion ? 450 : 0);
   }));
 
-  // the note David will see, written from the answers
+  // the note Sam will see, written from the answers
   const LINES = {
-    interest: { 'Private lesson': "I'm interested in private lessons.", 'Group / clinic': "I'd like to know whether group or clinic sessions are available.", 'Skill development': "I'd like help with specific parts of my game.", 'Not sure': "I'm not sure yet what would suit me best." },
-    experience: { Beginner: "I'm fairly new to pickleball.", Recreational: 'I play recreationally.', Intermediate: "I'd call myself an intermediate player.", 'Not sure': "I'm not sure how to describe my level yet." },
+    who: { Myself: 'The lessons would be for me.', 'Child / family member': "I'm asking for my child or another family member.", Family: "We're interested as a family.", Other: "I'm asking on someone else's behalf." },
+    focus: { 'Beginner help': "We're looking for help getting started.", 'Skill development': "I'd like to develop my game further.", 'Advanced training': "I'm interested in advanced, competitive training.", 'Adaptive tennis': "I'm interested in adaptive tennis.", 'Family / homeschool': "I'm interested in family or homeschool tennis.", 'Not sure': "I'm not sure yet what would suit best." },
   };
   const compose = (data) => {
     const name = String(data.get('name') || '').trim();
     const hasPhone = !!String(data.get('phone') || '').trim();
     return {
-      interest: LINES.interest[data.get('interest')] || '',
-      experience: LINES.experience[data.get('experience')] || '',
+      who: LINES.who[data.get('lesson_for')] || '',
+      focus: LINES.focus[data.get('looking_for')] || '',
       contact: name ? `Thanks! — ${name}${hasPhone ? ' · phone number included' : ''}` : '',
     };
   };
@@ -666,8 +792,8 @@
       if (t && motion) restartClass(b, 'is-new');
     });
     const set = {
-      interest: !!data.get('interest'),
-      experience: !!data.get('experience'),
+      who: !!data.get('lesson_for'),
+      focus: !!data.get('looking_for'),
       contact: validStep(N),
     };
     checks.forEach((li) => li.classList.toggle('is-set', set[li.dataset.k]));
@@ -690,16 +816,16 @@
     flash(r.closest('label'));
     return true;
   };
-  // a coaching interest chosen above is pre-selected in step 1; it only replaces an earlier answer while still on step 1
+  // a coaching path chosen above is pre-selected in step 2; it replaces an earlier answer only if the visitor didn't pick it themselves
   function carryType() {
     if (sent || !chosenType) return;
-    if (tick('interest', chosenType, reached === 1 && cur === 1)) { carry.hidden = false; updateSummary(); }
+    if (tick('looking_for', chosenType, !focusByUser)) { carry.hidden = false; updateSummary(); }
   }
   function prepareBooking({ type } = {}) {
     if (sent) resetBooking();
-    if (tick('interest', type || chosenType, !!type)) {
+    if (tick('looking_for', type || chosenType, !!type || !focusByUser)) {
       carry.hidden = false;
-      if (type) chosenType = type;
+      if (type) { chosenType = type; focusByUser = false; }
     }
     updateSummary();
     if (cur !== 1) goStep(1, false);
@@ -709,6 +835,7 @@
     form.reset();
     sent = false;
     reached = 1;
+    focusByUser = false;
     form.classList.remove('is-sent');
     msg.classList.remove('is-sent');
     done.classList.remove('is-current');
@@ -757,7 +884,7 @@
       $('.rq__done-name', done).textContent = first ? `, ${first}` : '';
       $('.rq__done-p', done).textContent = preview
         ? 'Preview mode — nothing was sent. The form sends for real once the site is live on Netlify.'
-        : 'David will read your message and reply to talk through what’s possible. Nothing is booked or reserved — this is the start of a conversation.';
+        : 'Sam will read your message and reply to talk through what’s possible. Nothing is booked or reserved — this is the start of a conversation.';
       done.classList.add('is-current');
       done.focus({ preventScroll: true });
       setProgress(N + 1);
@@ -773,9 +900,11 @@
   carryType();  // a choice remembered from earlier in this visit
 
   /* ==========================================================================
-     On court: expanding panels of David's photos. Hover or focus opens a panel;
-     clicking an open panel shows the larger view (on touch screens the first
-     tap opens it). Player feedback renders from PROOF once real feedback exists.
+     Gallery (kept for Sam's own photos — not on the page yet): expanding
+     panels. Hover or focus opens a panel; clicking an open panel shows the
+     larger view (on touch screens the first tap opens it). Player feedback
+     renders from PROOF once real feedback exists. All of this no-ops while
+     the gallery markup is absent.
      ========================================================================== */
   const panels = $$('.panel');
   const wide = matchMedia('(min-width: 701px)');
@@ -836,7 +965,7 @@
       instagram: '<rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.6"/><path d="M16.6 7.4h.01"/>',
       facebook: '<path d="M14.5 8H17V4.5h-2.5A3.5 3.5 0 0 0 11 8v2.5H8.5V14H11v6h3.5v-6H17l.5-3.5h-3V8z"/>',
     };
-    const LABEL = { email: ['Email', 'Write to David'], instagram: ['Instagram', 'Follow David'], facebook: ['Facebook', 'David on Facebook'] };
+    const LABEL = { email: ['Email', 'Write to Sam'], instagram: ['Instagram', 'Follow Sam'], facebook: ['Facebook', 'Sam on Facebook'] };
     Object.entries(CONTACT).forEach(([k, v]) => {
       if (!v) return;
       const a = Object.assign(d.createElement('a'), { className: 'fsocial', href: k === 'email' ? `mailto:${v}` : v });
@@ -849,53 +978,53 @@
     socials.hidden = !socials.children.length;
   }
 
-  // a ball hops along the giant MOTT — each letter lights up as it lands — then works its way back,
-  // on a loop. It only runs while the word is on screen.
+  // the ball crosses the giant CHADWELL once — each letter lights as it lands — then rests on the last letter.
+  // It runs the first time the word comes on screen, never again.
   const fword = $('.fword');
   if (fword && motion) {
     const letters = $$('span', fword);
     const fball = $('.fword__ball', fword);
-    let ftl = null, fVisible = false;
+    const br = () => fball.offsetWidth / 2;
+    const spots = () => {
+      const box = fword.getBoundingClientRect();
+      return letters.map((l) => { const r = l.getBoundingClientRect(); return { x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height * 0.04 - br(), el: l }; });
+    };
+    const put = (x, y) => G.set(fball, { x: x - br(), y: y - br() });
     const land = (el) => {
       letters.forEach((l) => l.classList.toggle('is-lit', l === el));
-      setTimeout(() => el.classList.remove('is-lit'), 420);
-      G.fromTo(fball, { scaleX: 1.32, scaleY: 0.7 }, { scaleX: 1, scaleY: 1, duration: 0.42, ease: 'elastic.out(1, 0.45)', overwrite: 'auto' });
+      setTimeout(() => { el.classList.remove('is-lit'); el.classList.add('is-rest'); }, 380);
+      G.fromTo(fball, { scaleX: 1.3, scaleY: 0.72 }, { scaleX: 1, scaleY: 1, duration: 0.4, ease: 'elastic.out(1, 0.45)', overwrite: 'auto' });
     };
-    const buildHop = () => {
-      const prog = ftl ? ftl.progress() : 0;
-      if (ftl) ftl.kill();
-      const box = fword.getBoundingClientRect();
-      const br = fball.offsetWidth / 2;
-      const pts2 = letters.map((l) => { const r = l.getBoundingClientRect(); return { x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height * 0.04 - br, el: l }; });
-      const seq = [...letters.keys(), ...[...letters.keys()].slice(1, -1).reverse()];
-      const tl = G.timeline({ repeat: -1, paused: true });
-      const put = (x, y) => G.set(fball, { x: x - br, y: y - br });
-      seq.forEach((i, k) => {
-        const P = pts2[i], Q = pts2[seq[(k + 1) % seq.length]];
-        const c = { x: (P.x + Q.x) / 2, y: Math.min(P.y, Q.y) - Math.min(110, Math.max(50, Math.abs(Q.x - P.x) * 0.5)) * 2 };
-        const s = { t: 0 };
-        tl.fromTo(s, { t: 0 }, {
-          t: 1, duration: 0.6, ease: 'none', immediateRender: false,
-          onUpdate: () => { const t = s.t, u = 1 - t; put(u * u * P.x + 2 * u * t * c.x + t * t * Q.x, u * u * P.y + 2 * u * t * c.y + t * t * Q.y); },
-        });
+    let done = false;
+    const cross = () => {
+      if (done) return;
+      done = true;
+      const pts2 = spots();
+      const tl = G.timeline();
+      put(pts2[0].x, pts2[0].y - 120);
+      G.set(fball, { opacity: 1 });
+      tl.to({}, { duration: 0.01 });
+      const first = { t: 0 };
+      tl.to(first, { t: 1, duration: 0.5, ease: 'power2.in', onUpdate: () => put(pts2[0].x, pts2[0].y - 120 * (1 - first.t)) });
+      tl.call(land, [pts2[0].el]);
+      pts2.slice(1).forEach((Q, k) => {
+        const P = pts2[k];
+        const c = { x: (P.x + Q.x) / 2, y: Math.min(P.y, Q.y) - Math.min(90, Math.max(40, Math.abs(Q.x - P.x) * 0.45)) * 2 };
+        const s2 = { t: 0 };
+        tl.to(s2, { t: 1, duration: 0.42, ease: 'none', onUpdate: () => { const t = s2.t, u = 1 - t; put(u * u * P.x + 2 * u * t * c.x + t * t * Q.x, u * u * P.y + 2 * u * t * c.y + t * t * Q.y); } });
         tl.call(land, [Q.el]);
       });
-      put(pts2[0].x, pts2[0].y);
-      G.set(fball, { opacity: 1 });
-      ftl = tl;
-      tl.progress(prog);
-      if (fVisible) tl.play();
     };
-    new IntersectionObserver(([en]) => { fVisible = en.isIntersecting; if (ftl) (fVisible ? ftl.play() : ftl.pause()); }).observe(fword);
-    let fz = 0;
-    addEventListener('resize', () => { clearTimeout(fz); fz = setTimeout(buildHop, 200); });
-    d.fonts && d.fonts.ready.then(buildHop);
-    buildHop();
+    ST.create({ trigger: fword, start: 'top 85%', once: true, onEnter: () => (d.fonts ? d.fonts.ready.then(cross) : cross()) });
+    // keep a resting ball on the last letter if the layout changes afterwards
+    addEventListener('resize', () => { if (!done) return; const p = spots(); const z = p[p.length - 1]; put(z.x, z.y); });
   }
 
-  // Ticker loops seamlessly
-  const tickerTrack = $('.nav__ticker-track');
-  if (tickerTrack) tickerTrack.innerHTML += tickerTrack.innerHTML;
+  // the closing band moves with the scroll only — no auto-running marquee
+  const fbandTrack = $('.fband__track');
+  if (fbandTrack && motion) {
+    G.fromTo(fbandTrack, { xPercent: 0 }, { xPercent: -30, ease: 'none', scrollTrigger: { trigger: '.footer', start: 'top bottom', end: 'bottom top', scrub: 0.6 } });
+  }
 
   // Rolling text on hover
   $$('.nav__links a, .flink').forEach((a) => {
@@ -920,12 +1049,12 @@
   }
 
   /* ==========================================================================
-     Mobile sticky CTA — "See coaching options" until the coaching options
-     have been on screen, then "Ask about lessons". Hidden over the hero, the
-     interest form and the footer.
+     Mobile sticky CTA — "Explore lessons" until the coaching paths have been
+     on screen, then "Ask about lessons". Hidden over the hero, the inquiry
+     and the footer.
      ========================================================================== */
   const mctaT = $('.mcta__t', mcta);
-  const seen = { coaching: false };
+  const seen = { lessons: false };
   const hideOver = new Set();
   const updateMcta = () => {
     const show = !hideOver.size && scrollY > innerHeight * 0.6 && !menu.classList.contains('is-open');
@@ -935,17 +1064,17 @@
   const mctaIO = new IntersectionObserver((entries) => {
     entries.forEach((en) => {
       const id = en.target.id;
-      if (id === 'coaching' && en.isIntersecting && !seen.coaching) {
-        seen.coaching = true;
-        mcta.setAttribute('href', '#book');
+      if (id === 'lessons' && en.isIntersecting && !seen.lessons) {
+        seen.lessons = true;
+        mcta.setAttribute('href', '#ask');
         mctaT.textContent = 'Ask about lessons';
         restartClass(mcta, 'is-swap');
       }
-      if (id !== 'coaching') { if (en.isIntersecting) hideOver.add(id); else hideOver.delete(id); }
+      if (id !== 'lessons') { if (en.isIntersecting) hideOver.add(id); else hideOver.delete(id); }
     });
     updateMcta();
   }, { threshold: 0.12 });
-  ['top', 'coaching', 'book', 'final'].forEach((id) => mctaIO.observe(d.getElementById(id)));
+  ['top', 'lessons', 'ask', 'final'].forEach((id) => mctaIO.observe(d.getElementById(id)));
 
   /* ==========================================================================
      Header state
