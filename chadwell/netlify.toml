@@ -1,4 +1,4 @@
-# Netlify settings for David Mott's pickleball coaching site (plain static site — no build step)
+# Netlify settings for Sam Chadwell's tennis coaching site (plain static site — no build step)
 [build]
   publish = "."
 
